@@ -13,6 +13,11 @@ import java.nio.ByteOrder;
 
 /**
  * Парсер бинарного STL. Считает объём, площадь поверхности и габариты модели.
+ *
+ * <p>Число треугольников берётся из недоверенного заголовка, поэтому ограничивается
+ * по абсолютному значению и по ожидаемому размеру файла (арифметика {@code long}),
+ * а треугольники читаются по одному небольшим буфером — без выделения памяти
+ * пропорционально заголовку.</p>
  */
 @Slf4j
 @Component
@@ -20,6 +25,8 @@ public class BinaryStlParser implements StlParser {
 
     private static final int HEADER_SIZE = 80;
     private static final int TRIANGLE_SIZE = 50;
+    private static final long MAX_TRIANGLES = 5_000_000L;
+    private static final long MAX_BYTES = 100L * 1024L * 1024L;
 
     @Override
     public ModelGeometry parse(InputStream inputStream) {
@@ -28,29 +35,48 @@ public class BinaryStlParser implements StlParser {
             in.readFully(header);
 
             int triangleCount = Integer.reverseBytes(in.readInt());
-            if (triangleCount <= 0 || triangleCount > 100_000_000) {
-                throw new StlParseException("Некорректное число треугольников: " + triangleCount);
+            if (triangleCount <= 0 || triangleCount > MAX_TRIANGLES) {
+                throw new StlParseException(
+                        "Некорректное число треугольников: " + triangleCount);
             }
 
-            byte[] buffer = new byte[triangleCount * TRIANGLE_SIZE];
-            in.readFully(buffer);
+            long expectedBytes = (long) triangleCount * TRIANGLE_SIZE;
+            if (expectedBytes > MAX_BYTES) {
+                throw new StlParseException(
+                        "STL слишком велик: " + expectedBytes + " байт");
+            }
 
-            ByteBuffer bb = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN);
+            byte[] triangleBuffer = new byte[TRIANGLE_SIZE];
 
             double signedVolume = 0;
             double area = 0;
 
-            double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY, minZ = Double.POSITIVE_INFINITY;
-            double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY, maxZ = Double.NEGATIVE_INFINITY;
+            double minX = Double.POSITIVE_INFINITY;
+            double minY = Double.POSITIVE_INFINITY;
+            double minZ = Double.POSITIVE_INFINITY;
+            double maxX = Double.NEGATIVE_INFINITY;
+            double maxY = Double.NEGATIVE_INFINITY;
+            double maxZ = Double.NEGATIVE_INFINITY;
 
             for (int i = 0; i < triangleCount; i++) {
+                in.readFully(triangleBuffer);
+                ByteBuffer bb = ByteBuffer
+                        .wrap(triangleBuffer)
+                        .order(ByteOrder.LITTLE_ENDIAN);
+
                 bb.getFloat(); // normal x
                 bb.getFloat(); // normal y
                 bb.getFloat(); // normal z
 
-                double x1 = bb.getFloat(), y1 = bb.getFloat(), z1 = bb.getFloat();
-                double x2 = bb.getFloat(), y2 = bb.getFloat(), z2 = bb.getFloat();
-                double x3 = bb.getFloat(), y3 = bb.getFloat(), z3 = bb.getFloat();
+                double x1 = bb.getFloat();
+                double y1 = bb.getFloat();
+                double z1 = bb.getFloat();
+                double x2 = bb.getFloat();
+                double y2 = bb.getFloat();
+                double z2 = bb.getFloat();
+                double x3 = bb.getFloat();
+                double y3 = bb.getFloat();
+                double z3 = bb.getFloat();
                 bb.getShort(); // attribute byte count
 
                 signedVolume += signedTetraVolume(x1, y1, z1, x2, y2, z2, x3, y3, z3);
@@ -64,9 +90,11 @@ public class BinaryStlParser implements StlParser {
                 maxZ = Math.max(maxZ, Math.max(z1, Math.max(z2, z3)));
             }
 
-            log.debug("STL разобран: треугольников={}, объём={} мм^3", triangleCount, Math.abs(signedVolume));
+            log.debug("STL разобран: треугольников={}, объём={} мм^3",
+                    triangleCount, Math.abs(signedVolume));
 
-            return ModelGeometry.builder()
+            return ModelGeometry
+                    .builder()
                     .volumeMm3(Math.abs(signedVolume))
                     .surfaceAreaMm2(area)
                     .boundingBoxXmm(maxX - minX)
@@ -75,9 +103,11 @@ public class BinaryStlParser implements StlParser {
                     .triangleCount(triangleCount)
                     .build();
         } catch (EOFException e) {
-            throw new StlParseException("Файл STL обрывается раньше ожидаемого", e);
+            throw new StlParseException(
+                    "Файл STL обрывается раньше ожидаемого", e);
         } catch (IOException e) {
-            throw new StlParseException("Ошибка чтения STL: " + e.getMessage(), e);
+            throw new StlParseException(
+                    "Ошибка чтения STL: " + e.getMessage(), e);
         }
     }
 
@@ -92,8 +122,12 @@ public class BinaryStlParser implements StlParser {
     private double triangleArea(double x1, double y1, double z1,
                                 double x2, double y2, double z2,
                                 double x3, double y3, double z3) {
-        double ax = x2 - x1, ay = y2 - y1, az = z2 - z1;
-        double bx = x3 - x1, by = y3 - y1, bz = z3 - z1;
+        double ax = x2 - x1;
+        double ay = y2 - y1;
+        double az = z2 - z1;
+        double bx = x3 - x1;
+        double by = y3 - y1;
+        double bz = z3 - z1;
         double cx = ay * bz - az * by;
         double cy = az * bx - ax * bz;
         double cz = ax * by - ay * bx;

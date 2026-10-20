@@ -10,8 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.self.printlab_backend.dto.experiment.ExperimentResponse;
 import ru.self.printlab_backend.dto.experiment.ResearchModelResponse;
 import ru.self.printlab_backend.model.ExperimentResult;
+import ru.self.printlab_backend.model.ResearchModel;
 import ru.self.printlab_backend.service.ExperimentService;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -23,17 +25,28 @@ public class ExperimentController {
 
     @GetMapping
     public List<ExperimentResponse> findAll(@RequestParam(required = false) String modelId) {
-        List<ExperimentResult> results = (modelId == null || modelId.isBlank())
-                ? experimentService.findAll()
-                : experimentService.findByModelId(modelId);
-        return results.stream().map(ExperimentResponse::from).toList();
+        List<ExperimentResult> results;
+        if (modelId == null || modelId.isBlank()) {
+            results = experimentService.findAll();
+        } else {
+            results = experimentService.findByModelId(modelId);
+        }
+
+        List<ExperimentResponse> response = new ArrayList<>();
+        for (ExperimentResult e : results) {
+            response.add(ExperimentResponse.from(e));
+        }
+        return response;
     }
 
     @GetMapping("/models")
     public List<ResearchModelResponse> researchModels() {
-        return experimentService.findAllResearchModels().stream()
-                .map(ResearchModelResponse::from)
-                .toList();
+        List<ResearchModel> models = experimentService.findAllResearchModels();
+        List<ResearchModelResponse> response = new ArrayList<>();
+        for (ResearchModel m : models) {
+            response.add(ResearchModelResponse.from(m));
+        }
+        return response;
     }
 
     @PostMapping

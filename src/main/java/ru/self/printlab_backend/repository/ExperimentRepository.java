@@ -15,6 +15,8 @@ public interface ExperimentRepository {
 
     List<ExperimentResult> findExperimentsByModelId(String modelId);
 
+    List<ExperimentResult> findExperimentsByModelIdAndMaterial(String modelId, String material);
+
     List<ResearchModel> findAllResearchModels();
 
     Optional<ResearchModel> findResearchModelById(String id);

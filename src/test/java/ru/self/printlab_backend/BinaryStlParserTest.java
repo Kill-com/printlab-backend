@@ -3,13 +3,13 @@ package ru.self.printlab_backend;
 import org.junit.jupiter.api.Test;
 import ru.self.printlab_backend.model.ModelGeometry;
 import ru.self.printlab_backend.stl.BinaryStlParser;
+import ru.self.printlab_backend.stl.StlParseException;
 
 import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class BinaryStlParserTest {
 
@@ -23,6 +23,28 @@ class BinaryStlParserTest {
         assertEquals(20.0, geometry.getBoundingBoxYmm(), 1e-6);
         assertEquals(30.0, geometry.getBoundingBoxZmm(), 1e-6);
         assertTrue(geometry.getSurfaceAreaMm2() > 0);
+    }
+
+    @Test
+    void throwsOnHugeTriangleCountWithoutAllocatingMemory() {
+        ByteBuffer bb = ByteBuffer.allocate(84).order(ByteOrder.LITTLE_ENDIAN);
+        bb.put(new byte[80]);
+        bb.putInt(40_000_000); // 40 млн треугольников = ~2 ГБ
+
+        assertThrows(StlParseException.class, () -> 
+            new BinaryStlParser().parse(new ByteArrayInputStream(bb.array()))
+        );
+    }
+
+    @Test
+    void throwsOnIntegerOverflowInTriangleCount() {
+        ByteBuffer bb = ByteBuffer.allocate(84).order(ByteOrder.LITTLE_ENDIAN);
+        bb.put(new byte[80]);
+        bb.putInt(42_949_673); // Переполнение int при * 50
+
+        assertThrows(StlParseException.class, () -> 
+            new BinaryStlParser().parse(new ByteArrayInputStream(bb.array()))
+        );
     }
 
     private byte[] buildSingleTriangleStl() {

@@ -1,24 +1,18 @@
 package ru.self.printlab_backend.algorithm;
 
+import ru.self.printlab_backend.dto.optimization.OptimizationRequest;
 import ru.self.printlab_backend.model.ExperimentResult;
-import ru.self.printlab_backend.model.ModelGeometry;
 
 import java.util.List;
 
 /**
- * Контракт алгоритма подбора оптимального процента заполнения.
+ * Контракт алгоритма подбора оптимальной исследованной конфигурации.
+ *
+ * <p>Список {@code comparableExperiments} уже ограничен сопоставленной моделью
+ * и материалом на уровне сервиса. Алгоритм не подмешивает данные других образцов.</p>
  */
 public interface OptimizationAlgorithm {
 
-    OptimizationOutcome optimize(ModelGeometry geometry, List<ExperimentResult> experiments, Constraints constraints);
-
-    record Constraints(double maxPrintTimeMin, double maxMaterialConsumptionG) {
-    }
-
-    record OptimizationOutcome(double recommendedInfillPercent,
-                               double expectedCompressiveStrengthMpa,
-                               double expectedPrintTimeMin,
-                               double expectedMaterialConsumptionG,
-                               String explanation) {
-    }
+    OptimizationResult select(List<ExperimentResult> comparableExperiments,
+                              OptimizationRequest request);
 }

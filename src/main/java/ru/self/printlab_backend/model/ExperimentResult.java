@@ -5,9 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Результат одного физического эксперимента.
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,27 +15,22 @@ public class ExperimentResult {
     private String modelId;
     private String material;
 
-    /** Процент заполнения, %. */
     private double infillPercent;
-
-    /** Прочность на сжатие, МПа. */
-    private double compressiveStrengthMpa;
-
-    /** Толщина стенки, мм. */
-    private double wallThicknessMm;
-
-    /** Высота слоя, мм. */
+    private String infillPattern; 
+    private int perimeters;
     private double layerHeightMm;
+    private String printOrientation;
 
-    /** Температура сопла, °C. */
+    private double compressiveStrengthMpa;
+    private double wallThicknessMm;
     private double nozzleTemperatureC;
-
-    /** Скорость печати, мм/с. */
     private double printSpeedMmS;
-
-    /** Время печати, мин. */
     private double printTimeMin;
-
-    /** Расход материала, г. */
     private double materialConsumptionG;
+
+    /** Измеренная разрушающая нагрузка, Н (в таблице кг, переведено). */
+    private Double failureLoadN;
+    
+    /** Тип испытания: изгиб, сжатие и т.д. */
+    private String testType;
 }

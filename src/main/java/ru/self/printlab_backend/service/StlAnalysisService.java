@@ -23,19 +23,20 @@ public class StlAnalysisService {
     private final BinaryStlParser binaryStlParser;
     private final ModelIdentificationService modelIdentificationService;
 
-    public AnalysisResult analyze(MultipartFile file) {
+    public StlAnalysisResult analyze(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new StlParseException("Файл STL не передан или пуст");
         }
         try (InputStream in = file.getInputStream()) {
             ModelGeometry geometry = binaryStlParser.parse(in);
             Optional<ResearchModel> matched = modelIdentificationService.identify(geometry);
-            return new AnalysisResult(geometry, matched.orElse(null));
+            ResearchModel model = null;
+            if (matched.isPresent()) {
+                model = matched.get();
+            }
+            return new StlAnalysisResult(geometry, model);
         } catch (IOException e) {
             throw new StlParseException("Не удалось прочитать загруженный файл", e);
         }
-    }
-
-    public record AnalysisResult(ModelGeometry geometry, ResearchModel matchedModel) {
     }
 }

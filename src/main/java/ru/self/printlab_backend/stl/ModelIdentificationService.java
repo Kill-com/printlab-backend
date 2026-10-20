@@ -7,7 +7,7 @@ import ru.self.printlab_backend.model.ModelGeometry;
 import ru.self.printlab_backend.model.ResearchModel;
 import ru.self.printlab_backend.repository.ExperimentRepository;
 
-import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -23,10 +23,29 @@ public class ModelIdentificationService {
     private final ExperimentRepository experimentRepository;
 
     public Optional<ResearchModel> identify(ModelGeometry geometry) {
-        return experimentRepository.findAllResearchModels().stream()
-                .filter(m -> m.getGeometry() != null)
-                .min(Comparator.comparingDouble(m -> geometryDistance(geometry, m.getGeometry())))
-                .filter(m -> geometryDistance(geometry, m.getGeometry()) < TOLERANCE_RATIO);
+        List<ResearchModel> models = experimentRepository.findAllResearchModels();
+
+        ResearchModel best = null;
+        double bestDistance = Double.POSITIVE_INFINITY;
+
+        for (ResearchModel m : models) {
+            if (m.getGeometry() == null) {
+                continue;
+            }
+            double distance = geometryDistance(geometry, m.getGeometry());
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = m;
+            }
+        }
+
+        if (best == null) {
+            return Optional.empty();
+        }
+        if (bestDistance >= TOLERANCE_RATIO) {
+            return Optional.empty();
+        }
+        return Optional.of(best);
     }
 
     private double geometryDistance(ModelGeometry a, ModelGeometry b) {
@@ -39,7 +58,9 @@ public class ModelIdentificationService {
 
     private double relativeDiff(double a, double b) {
         double denom = Math.max(Math.abs(a), Math.abs(b));
-        if (denom == 0) return 0;
+        if (denom == 0) {
+            return 0;
+        }
         return Math.abs(a - b) / denom;
     }
 }

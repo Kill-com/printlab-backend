@@ -41,8 +41,12 @@ public class JsonExperimentRepository implements ExperimentRepository {
     }
 
     private void load() {
-        experiments = readList(experimentsFile, new TypeReference<List<ExperimentResult>>() {});
-        researchModels = readList(modelsFile, new TypeReference<List<ResearchModel>>() {});
+        experiments = readList(
+                experimentsFile,
+                new TypeReference<List<ExperimentResult>>() {});
+        researchModels = readList(
+                modelsFile,
+                new TypeReference<List<ResearchModel>>() {});
         log.info("Загружено экспериментов: {}, исследованных моделей: {}",
                 experiments.size(), researchModels.size());
     }
@@ -52,7 +56,8 @@ public class JsonExperimentRepository implements ExperimentRepository {
             return new ArrayList<>();
         }
         try {
-            return new ArrayList<>(jsonMapper.readValue(file, type));
+            return new ArrayList<>(
+                    jsonMapper.readValue(file, type));
         } catch (RuntimeException e) {
             log.error("Ошибка чтения {}: {}", file.getAbsolutePath(), e.getMessage());
             return new ArrayList<>();
@@ -61,7 +66,9 @@ public class JsonExperimentRepository implements ExperimentRepository {
 
     private void persistExperiments() {
         try {
-            jsonMapper.writerWithDefaultPrettyPrinter().writeValue(experimentsFile, experiments);
+            jsonMapper
+                    .writerWithDefaultPrettyPrinter()
+                    .writeValue(experimentsFile, experiments);
         } catch (RuntimeException e) {
             throw new IllegalStateException("Не удалось сохранить эксперименты", e);
         }
@@ -74,9 +81,31 @@ public class JsonExperimentRepository implements ExperimentRepository {
 
     @Override
     public List<ExperimentResult> findExperimentsByModelId(String modelId) {
-        return experiments.stream()
-                .filter(e -> modelId.equals(e.getModelId()))
-                .toList();
+        List<ExperimentResult> result = new ArrayList<>();
+        for (ExperimentResult e : experiments) {
+            if (modelId.equals(e.getModelId())) {
+                result.add(e);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public List<ExperimentResult> findExperimentsByModelIdAndMaterial(String modelId, String material) {
+        List<ExperimentResult> result = new ArrayList<>();
+        for (ExperimentResult e : experiments) {
+            if (!modelId.equals(e.getModelId())) {
+                continue;
+            }
+            if (material == null || material.isBlank()) {
+                result.add(e);
+                continue;
+            }
+            if (material.equalsIgnoreCase(e.getMaterial())) {
+                result.add(e);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -86,9 +115,12 @@ public class JsonExperimentRepository implements ExperimentRepository {
 
     @Override
     public Optional<ResearchModel> findResearchModelById(String id) {
-        return researchModels.stream()
-                .filter(m -> id.equals(m.getId()))
-                .findFirst();
+        for (ResearchModel m : researchModels) {
+            if (id.equals(m.getId())) {
+                return Optional.of(m);
+            }
+        }
+        return Optional.empty();
     }
 
     @Override

@@ -12,11 +12,19 @@ public record ModelAnalysisResponse(
         boolean matched
 ) {
     public static ModelAnalysisResponse of(ModelGeometry geometry, ResearchModel model) {
-        return ModelAnalysisResponse.builder()
+        boolean matched = model != null;
+        String matchedModelId = null;
+        String matchedModelName = null;
+        if (model != null) {
+            matchedModelId = model.getId();
+            matchedModelName = model.getName();
+        }
+        return ModelAnalysisResponse
+                .builder()
                 .geometry(geometry)
-                .matched(model != null)
-                .matchedModelId(model != null ? model.getId() : null)
-                .matchedModelName(model != null ? model.getName() : null)
+                .matched(matched)
+                .matchedModelId(matchedModelId)
+                .matchedModelName(matchedModelName)
                 .build();
     }
 }
